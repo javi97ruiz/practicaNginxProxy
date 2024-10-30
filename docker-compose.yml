@@ -1,0 +1,45 @@
+services:
+
+  nginx:
+    image: ubuntu/nginx # imagen de Nginx
+    container_name: nginx_server # nombre del contenedor
+    volumes:
+      - ./serrano_website/sites-available:/etc/nginx/sites-available # archivos de configuración de hosts virtuales
+      - ./serrano_website/websites:/var/www/html/ # directorio de los sitios web
+      - ./serrano_website/scripts:/docker-entrypoint.d/ # directorio de scripts
+    restart: always # reinicio automático
+    networks:
+      - webnet # red de contenedores
+
+  apache:
+    image: ubuntu/apache2 # imagen de Apache
+    container_name: apache_server # nombre del contenedor
+    volumes:
+      - ./javi_website/websites:/var/www/html/ # directorio de los sitios web
+      - ./javi_website/sites-available:/etc/apache2/sites-available      
+      - ./javi_website/scripts:/scripts
+      - ./javi_website/htpasswd/.htpasswd:/etc/apache2/.htpasswd # archivo de contraseñas
+     # - ./javiruiz_website/certs:/etc/apache2/certs # directorio de certificados (hechos con openssl) lleva los certs el proxy
+    restart: always # reinicio automático
+    entrypoint: /scripts/apachejavi-init.sh
+    networks:
+      - webnet # red de contenedores
+
+  proxy:
+    image: ubuntu/nginx # imagen de Nginx
+    container_name: proxy_server # nombre del contenedor
+    ports:
+      - "80:80" # mapeo de puertos  HTTP
+      - "443:443" # mapeo de puertos  HTTPS
+    volumes:
+      - ./proxy/conf/nginx.conf:/etc/nginx/nginx.conf # archivo de configuración principal
+      - ./proxy/certs:/etc/nginx/certs # directorio de certificados (hechos con openssl)
+    restart: always # reinicio automático
+    depends_on:
+      - apache # dependencia de Apache
+      - nginx # dependencia de Nginx
+    networks:
+      - webnet # red de contenedores
+
+networks:
+  webnet:
